@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx src/demo.ts",
     "seed": "tsx src/seed.ts",
-    "ask": "tsx src/run.ts --query",
+    "ask": "tsx src/run.ts",
     "demo": "npm run dev",
     "typecheck": "tsc --noEmit"
   },

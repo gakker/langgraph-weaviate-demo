@@ -24,7 +24,7 @@ Environment:
 - `src/agents/ragAgent.ts` – Queries Weaviate; falls back to fetchObjects when vector search isn’t available.
 - `src/tools/chartTool.ts` – Mock Chart.js config generator.
 - `src/demo.ts` – Runs sample queries (direct, RAG, chart, chart+RAG) and prints agent outputs.
-- `src/run.ts` – CLI helper to run one-off queries against the delegating agent.
+- `src/run.ts` – CLI helper to run one-off queries against the delegating agent (use `npm run ask -- --query "..." --tenant tenant-a`).
 
 ## Notes for the video walkthrough
 - Show `docker compose up -d`, `npm run seed`, and `npm run demo`.
