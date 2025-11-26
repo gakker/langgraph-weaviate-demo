@@ -5,6 +5,22 @@ import { makeRagAgent } from "./ragAgent";
 import { buildChartConfig } from "../tools/chartTool";
 import { buildGeminiModel } from "../llm/gemini";
 
+const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? "8000");
+
+const withTimeout = <T>(promise: Promise<T>, ms: number) =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+
 const State = Annotation.Root({
   query: Annotation<string>(),
   tenant: Annotation<string>(),
@@ -130,13 +146,15 @@ export const buildDelegatingGraph = (client: WeaviateClient) => {
           .join("\n\n");
 
         try {
-          const res = await gemini.invoke(prompt);
-          llmAnswer = asText(res.content) || fallback;
+          const res = await withTimeout(gemini.invoke(prompt), LLM_TIMEOUT_MS);
+          const content = (res as any)?.content ?? res;
+          const llmText = content ? asText(content) : "";
+          llmAnswer = llmText || fallback;
           llmNotes.push(
             `Gemini generated the final answer (${process.env.GEMINI_MODEL ?? "gemini-1.5-flash"}).`
           );
         } catch (error: any) {
-          llmNotes.push(`Gemini fallback used due to error: ${error?.message ?? error}`);
+          llmNotes.push("Gemini unavailable; using fallback answer.");
         }
       } else {
         llmNotes.push("Gemini not configured; using stitched fallback.");
