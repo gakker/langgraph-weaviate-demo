@@ -3,6 +3,7 @@ import type { WeaviateClient } from "weaviate-ts-client";
 import { AgentState, ChartConfig } from "../types";
 import { makeRagAgent } from "./ragAgent";
 import { buildChartConfig } from "../tools/chartTool";
+import { buildGeminiModel } from "../llm/gemini";
 
 const State = Annotation.Root({
   query: Annotation<string>(),
@@ -58,6 +59,28 @@ const chartNode = (state: DelegatorState): Partial<DelegatorState> => ({
 
 export const buildDelegatingGraph = (client: WeaviateClient) => {
   const ragNode = makeRagAgent(client);
+  const gemini = buildGeminiModel();
+
+  const asText = (content: unknown) => {
+    if (Array.isArray(content)) {
+      return content
+        .map((entry) =>
+          typeof entry === "string"
+            ? entry
+            : typeof entry === "object" && entry !== null && "text" in entry
+              ? // @ts-ignore
+                entry.text
+              : JSON.stringify(entry)
+        )
+        .join(" ");
+    }
+    if (typeof content === "string") return content;
+    if (content && typeof content === "object" && "text" in content) {
+      // @ts-ignore
+      return content.text as string;
+    }
+    return String(content ?? "");
+  };
 
   const graph = new StateGraph(State)
     .addNode("delegate", (state: DelegatorState) => ({
@@ -82,15 +105,46 @@ export const buildDelegatingGraph = (client: WeaviateClient) => {
         ],
       };
     })
-    .addNode("final", (state: DelegatorState) => {
-      const synthesized =
-        state.answer ||
-        (state.references.length
-          ? state.references.map((ref) => ref.answer).join(" ")
-          : `No answer found for: ${state.query}`);
+    .addNode("final", async (state: DelegatorState) => {
+      const stitched =
+        state.references.length > 0
+          ? state.references.map((ref) => `- ${ref.answer}`).join("\n")
+          : null;
+      const fallback =
+        state.answer ??
+        stitched ??
+        `No answer found for: ${state.query}. If you have access to an LLM, provide a concise response.`;
+
+      const llmNotes: string[] = [];
+      let llmAnswer = fallback;
+
+      if (gemini) {
+        const prompt = [
+          "You are a concise assistant helping with a shopfloor-style Q&A.",
+          `User query: ${state.query}`,
+          state.chartConfig ? "A chart config is being returned; keep that in mind." : "",
+          stitched ? `Context:\n${stitched}` : "No retrieval context available.",
+          "Provide a short, direct answer (1-3 sentences).",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+
+        try {
+          const res = await gemini.invoke(prompt);
+          llmAnswer = asText(res.content) || fallback;
+          llmNotes.push(
+            `Gemini generated the final answer (${process.env.GEMINI_MODEL ?? "gemini-1.5-flash"}).`
+          );
+        } catch (error: any) {
+          llmNotes.push(`Gemini fallback used due to error: ${error?.message ?? error}`);
+        }
+      } else {
+        llmNotes.push("Gemini not configured; using stitched fallback.");
+      }
 
       return {
-        answer: synthesized,
+        answer: llmAnswer,
+        notes: llmNotes,
       };
     })
     .addEdge(START, "delegate")
