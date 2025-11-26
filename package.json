@@ -1,0 +1,29 @@
+{
+  "name": "ai-task--ali-profile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx src/demo.ts",
+    "seed": "tsx src/seed.ts",
+    "ask": "tsx src/run.ts --query",
+    "demo": "npm run dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@langchain/langgraph": "^1.0.2",
+    "dotenv": "^17.2.3",
+    "langchain": "^1.1.1",
+    "uuid": "^13.0.0",
+    "weaviate-ts-client": "^2.2.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,32 @@
+# LLM Agent Demo (Weaviate + LangGraph)
+
+Implements the assessment requirements: multi-tenant Weaviate schema, seeding, and a LangGraph delegating agent that routes between a mock Chart.js tool, a RAG agent, or a direct reply.
+
+## Prerequisites
+- Node.js (LTS is fine) and npm
+- Docker (for the Weaviate container)
+
+## Quick start
+1) Install deps: `npm install`
+2) Start Weaviate: `docker compose up -d`
+3) Seed sample data: `npm run seed`
+4) Run the demo workflow: `npm run demo`
+   - Or ask a single query: `npm run ask -- --query "Create a chart for weekly throughput" --tenant tenant-a`
+
+Environment:
+- `WEAVIATE_URL` defaults to `http://localhost:8080` (set it if your port/host differ).
+
+## What’s included
+- `docker-compose.yml` – Weaviate with multi-tenancy enabled (`DEFAULT_VECTORIZER_MODULE=none`).
+- `src/weaviate/client.ts` – Client factory, schema creation, tenant setup, and seeding helper.
+- `src/seed.ts` – Seeds two tenants with fictional QA rows.
+- `src/agents/delegator.ts` – LangGraph hierarchy (delegate → chart, rag, chart+rag, direct → final).
+- `src/agents/ragAgent.ts` – Queries Weaviate; falls back to fetchObjects when vector search isn’t available.
+- `src/tools/chartTool.ts` – Mock Chart.js config generator.
+- `src/demo.ts` – Runs sample queries (direct, RAG, chart, chart+RAG) and prints agent outputs.
+- `src/run.ts` – CLI helper to run one-off queries against the delegating agent.
+
+## Notes for the video walkthrough
+- Show `docker compose up -d`, `npm run seed`, and `npm run demo`.
+- Mention the mock LLM approach and how to swap in a real LLM if desired.
+- Point out how the delegator can route to chart, RAG, both (parallelized inside a node), or answer directly.
